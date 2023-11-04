@@ -183,7 +183,7 @@ H.auto_highlight = function()
   -- Get current information
   local win_id = vim.api.nvim_get_current_win()
   local win_match = H.window_matches[win_id] or {}
-  local curword = H.get_cursor_word()
+  local curword = H.get_cursor_sentence()
 
   -- Only immediately update highlighting of current word under cursor if
   -- currently highlighted word equals one under cursor
@@ -242,7 +242,7 @@ H.highlight = function(only_current)
   -- - Using `\(...\)\@!` allows to not match current word.
   -- - Using 'very nomagic' ('\V') allows not escaping.
   -- - Using `\<` and `\>` matches whole word (and not as part).
-  local curword = H.get_cursor_word()
+  local curword = H.get_cursor_sentence()
   local pattern = string.format([[\(%s\)\@!\&\V\<%s\>]], current_word_pattern, curword)
   local match_id = vim.fn.matchadd('MiniCursorword', pattern, -1)
 
@@ -283,5 +283,35 @@ H.is_cursor_on_keyword = function()
 end
 
 H.get_cursor_word = function() return vim.fn.escape(vim.fn.expand('<cword>'), [[\/]]) end
+
+H.get_cursor_sentence = function()
+    -- Get the current line under the cursor
+    local line = vim.fn.getline('.')
+    -- Get the cursor's position
+    local cursor_col = vim.fn.col('.')
+
+    -- Define a more sophisticated regular expression pattern for identifying sentence boundaries
+    local sentence_pattern = "([^%.%?!%;]*[%.%?!%;%)]+%s*)"
+
+    -- Search for sentences in the line and store them in a table
+    local sentences = {}
+    for sentence in line:gmatch(sentence_pattern) do
+        table.insert(sentences, sentence)
+    end
+
+    -- Find the sentence containing the cursor
+    local current_sentence = nil
+    for _, sentence in ipairs(sentences) do
+        local sentence_start = line:find(sentence, 1, true)
+        local sentence_end = sentence_start + #sentence - 1
+
+        if cursor_col >= sentence_start and cursor_col <= sentence_end then
+            current_sentence = sentence
+            break
+        end
+    end
+
+    return current_sentence
+end
 
 return MiniCursorword
